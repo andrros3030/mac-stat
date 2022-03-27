@@ -1,11 +1,45 @@
-from supervenn import supervenn
-# from matplotlib_venn import venn2, venn2_circles, venn2_unweighted
-# from matplotlib_venn import venn3, venn3_circles
-from matplotlib import pyplot as plt
+from matplotlib import cm, pyplot as plt
+from upsetplot import generate_counts, plot, from_memberships, UpSet
 import random
+import xlwt
+import pandas as pd
+
+name1 = 'mac_main.txt'
+name2 = 'mac_avto.txt'
+name3 = 'mac_cafe.txt'
+FILENAME = 'mac_data.xls'
+
+
+def generate_xls(headers, data):
+    output = xlwt.Workbook()
+    sheet = output.add_sheet(FILENAME)
+    date_format = xlwt.XFStyle()
+    date_format.num_format_str = 'yyyy-mm-dd hh:mm:ss'
+    numerator = 0
+    for el in headers:
+        sheet.write(0, numerator, el)
+        numerator += 1
+    rowiterator = 1
+    for mac_type in data:
+        for line in data[mac_type]:
+            sheet.write(rowiterator, len(headers)-1, mac_type)
+            for i in range(len(headers)-1):
+                sheet.write(rowiterator, i, headers[i] in line)
+            rowiterator += 1
+    output.save(FILENAME)
+
+
+def make_distinct(data):
+    result = set()
+    for el in data:
+        for el2 in data[el]:
+            for el3 in el2:
+                result.add(el3)
+    return result
 
 
 def generate_dataset(filename, table, dataset_length=100, bill_len=6):
+    result = []
     file = open(filename, 'w')
     for _ in range(dataset_length):
         bluda = []
@@ -17,15 +51,17 @@ def generate_dataset(filename, table, dataset_length=100, bill_len=6):
                 bluda.append(el)
                 if len(bluda) == bill_len:
                     break
+        if len(bluda) == 0:
+            bluda.append(random.choice(list(table.keys())))
+        result.append(bluda)
         file.write(str(bluda) + '\n')
     file.close()
+    return result
 
 
 def makedata():
-    name1 = 'mac_main.txt'
-    name2 = 'mac_avto.txt'
-    name3 = 'mac_cafe.txt'
-    generate_dataset(name1, table={
+    result = {}
+    result[name1] = generate_dataset(name1, table={
         "БигМак": 0.8,
         "БигТейсти": 0.5,
         "Чизбургер": 0.4,
@@ -41,7 +77,7 @@ def makedata():
         "чай зеленый": 0.4,
         "прохладительные напитки": 0.8
     }, bill_len=5)
-    generate_dataset(name2, table={
+    result[name2] = generate_dataset(name2, table={
         "БигМак": 0.8,
         "БигТейсти": 0.5,
         "МакЧикен премьер": 0.5,
@@ -54,7 +90,7 @@ def makedata():
         "чай зеленый": 0.5,
         "прохладительные напитки": 0.6
     }, bill_len=7)
-    generate_dataset(name3, table={
+    result[name3] = generate_dataset(name3, table={
         "Пирожок с вишней": 0.3,
         "Пирожок с яблоком": 0.3,
         "МакФлурри": 0.4,
@@ -65,20 +101,67 @@ def makedata():
         "чай зеленый": 0.4,
         "молочный коктейль": 0.8
     }, bill_len=3)
+    generate_xls(
+        list(make_distinct(result)) + ['type'],
+        result
+    )
     return [name1, name2, name3]
 
 
-def get_data():
-    return [{1, 2, 3, 4}, {3, 4, 5}, {1, 6, 7, 8}]
+def get_data(filenames):
+    """
+    Открывает датасеты из указанных файлов и возвращает их в читабельном формате - уникальным набором множеств
+    и количеством вхождений этих множеств в датасет
+
+    :param filenames:
+    массив файлов в которых находятся датасеты
+
+    :return:
+    Возвращает набор множеств данных в виде массива по файлам
+    """
+    result_list = []
+    result_counts = []
+    data_like_obj = {
+        "value": [],
+        "type": [],
+        "data": []
+    }
+    for file in filenames:
+        for line in open(file, 'r').readlines():
+            tmp_result = set(line.replace('\n', '').split(','))
+            if tmp_result not in result_list:
+                result_list.append(tmp_result)
+                result_counts.append(1)
+            else:
+                result_counts[result_list.index(tmp_result)] += 1
+            data_like_obj["value"].append(tmp_result)
+            data_like_obj["type"].append(file)
+            data_like_obj["data"].append(1)
+    return result_list, result_counts, data_like_obj
 
 
-def main():
-    sets = get_data()
-    labels = ['alice', 'bob', 'third party']
-    supervenn(sets, labels)
+def main(filenames=None):
+    data, values, data_like_frame = get_data(filenames)
+    # print(data_like_frame)
+    # data = {'color': ['blue', 'green', 'yellow', 'red', 'white'],
+    #         'object': ['ball', 'pen', 'pencil', 'paper', 'mug'],
+    #         'price': [1.2, 1.0, 0.6, 0.9, 1.7],
+    #         'levels': [1, 2, 3, 4, 5]
+    #         }
+    # data_frame = pd.DataFrame(data, columns=['color', 'object', 'price'], index=['levels'])
+    # print(data_frame)
+    # data_frame = data_frame.set_index(data_frame.type).set_index(data_frame.values)
+    # example = UpSet(data_frame, intersection_plot_elements=0, show_counts=True)
+    example = UpSet(from_memberships(data, values), intersection_plot_elements=0, show_counts=True, facecolor='C1')
+    # print(example.totals)
+    # example.add_stacked_bars(by='type', colors=cm.Pastel1, title="Заказы")
+    example.plot()
     plt.show()
 
 
 if __name__ == '__main__':
-    makedata()
-    # main()
+    # makedata()
+    main(
+        [
+            name1, name2, name3
+        ])
