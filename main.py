@@ -1,35 +1,63 @@
+# -*- coding: utf-8 -*-
 from matplotlib import cm, pyplot as plt
-from upsetplot import generate_counts, plot, from_memberships, UpSet
+from upsetplot import UpSet
 import random
 import xlwt
 import pandas as pd
 
-name1 = 'mac_main.txt'
-name2 = 'mac_avto.txt'
-name3 = 'mac_cafe.txt'
+# глобальная переменная, название файла с датасетом
 FILENAME = 'mac_data.xls'
+fill = "»"
 
 
 def generate_xls(headers, data):
+    """
+    Создаёт XLS файл с датасетом и заданными колонками
+
+    :param headers:
+    массив заголовков колон
+
+    :param data:
+    двумерный массив данных датасета
+    """
     output = xlwt.Workbook()
     sheet = output.add_sheet(FILENAME)
-    date_format = xlwt.XFStyle()
-    date_format.num_format_str = 'yyyy-mm-dd hh:mm:ss'
     numerator = 0
+    print("Генераций колонн: ", end='')
     for el in headers:
         sheet.write(0, numerator, el)
         numerator += 1
+        print(f"{headers.index(el)}/{len(headers)}", end='')
+    print("\rГотово!")
     rowiterator = 1
     for mac_type in data:
+        print(f"Заполнение данных типа {mac_type}: ")
         for line in data[mac_type]:
-            sheet.write(rowiterator, len(headers)-1, mac_type)
-            for i in range(len(headers)-1):
+            sheet.write(rowiterator, len(headers) - 1, mac_type)
+            for i in range(len(headers) - 1):
                 sheet.write(rowiterator, i, headers[i] in line)
+            print(f"\r{str(data[mac_type].index(line))}/{str(len(data[mac_type]))}", end='')
             rowiterator += 1
-    output.save(FILENAME)
+        print("\rГотово!")
+    try:
+        output.save(FILENAME)
+        print("Файл датасета успешно создан")
+    except FileExistsError:
+        print("Файл уже существует. Программа продолжит свою работу используя старый файл")
+    except Exception as e:
+        print(e)
 
 
-def make_distinct(data):
+def make_distinct(data) -> set:
+    """
+    Создает множество уникальных элементов из словаря, где в качестве значений используется двумерный массив
+
+    :param data:
+    словарь с двумерным массивом данных
+
+    :return:
+    множество уникальных элементов
+    """
     result = set()
     for el in data:
         for el2 in data[el]:
@@ -38,9 +66,25 @@ def make_distinct(data):
     return result
 
 
-def generate_dataset(filename, table, dataset_length=100, bill_len=6):
+def generate_dataset(table, dataset_length=100, bill_len=6) -> list:
+    """
+    Генерирует датасет по указанным данным и с указанными параметрами
+
+    :param table:
+    словарь допустимых данных, где ключ - строка элемент множества,
+    а значение - вероятность появление этого элемента в строке датасета
+
+    :param dataset_length:
+    количество строк в итоговом датасете
+
+    :param bill_len:
+    максимально допустимая длинна одной строки в датасете
+
+    :return:
+    массив строк итогового датасета
+    """
     result = []
-    file = open(filename, 'w')
+    print("Генераций элемента датасета: ")
     for _ in range(dataset_length):
         bluda = []
         keys = list(table.keys())
@@ -54,14 +98,19 @@ def generate_dataset(filename, table, dataset_length=100, bill_len=6):
         if len(bluda) == 0:
             bluda.append(random.choice(list(table.keys())))
         result.append(bluda)
-        file.write(str(bluda) + '\n')
-    file.close()
+        print(f"\r{_}/{dataset_length}", end='')
+    print("\rГотово!")
     return result
 
 
 def makedata():
-    result = {}
-    result[name1] = generate_dataset(name1, table={
+    """
+    Создаёт набор датасетов и xls файл с данным набором.
+
+    Генерирует датасеты соответствующие МакДоналдс, МакАвто и МакКафе с заданными вероятностями и размерами чеков
+    """
+    result = {
+        'mac_main': generate_dataset(table={
         "БигМак": 0.8,
         "БигТейсти": 0.5,
         "Чизбургер": 0.4,
@@ -76,90 +125,74 @@ def makedata():
         "чай черный": 0.4,
         "чай зеленый": 0.4,
         "прохладительные напитки": 0.8
-    }, bill_len=5)
-    result[name2] = generate_dataset(name2, table={
-        "БигМак": 0.8,
-        "БигТейсти": 0.5,
-        "МакЧикен премьер": 0.5,
-        "Нагетсы": 0.7,
-        "Картошка": 0.8,
-        "Цезарь ролл": 0.4,
-        "МакФлурри": 0.6,
-        "кофе": 0.6,
-        "чай черный": 0.5,
-        "чай зеленый": 0.5,
-        "прохладительные напитки": 0.6
-    }, bill_len=7)
-    result[name3] = generate_dataset(name3, table={
-        "Пирожок с вишней": 0.3,
-        "Пирожок с яблоком": 0.3,
-        "МакФлурри": 0.4,
-        "МакФлурри клубничный": 0.4,
-        "Макдесерт": 0.4,
-        "кофе": 0.7,
-        "чай черный": 0.4,
-        "чай зеленый": 0.4,
-        "молочный коктейль": 0.8
-    }, bill_len=3)
+    }, bill_len=3),
+        'mac_avto': generate_dataset(table={
+            "БигМак": 0.8,
+            "БигТейсти": 0.5,
+            "МакЧикен премьер": 0.5,
+            "Нагетсы": 0.7,
+            "Картошка": 0.8,
+            "Цезарь ролл": 0.4,
+            "МакФлурри": 0.6,
+            "кофе": 0.6,
+            "чай черный": 0.5,
+            "чай зеленый": 0.5,
+            "прохладительные напитки": 0.6
+        }, bill_len=3),
+        'mac_cafe': generate_dataset(table={
+            "Пирожок с вишней": 0.3,
+            "Пирожок с яблоком": 0.3,
+            "МакФлурри": 0.4,
+            "МакФлурри клубничный": 0.4,
+            "Макдесерт": 0.4,
+            "кофе": 0.7,
+            "чай черный": 0.4,
+            "чай зеленый": 0.4,
+            "молочный коктейль": 0.8
+        }, bill_len=3),
+    }
+    print("Датасет сгенерирован")
     generate_xls(
         list(make_distinct(result)) + ['type'],
         result
     )
-    return [name1, name2, name3]
 
 
-def get_data(filenames):
+def main():
     """
-    Открывает датасеты из указанных файлов и возвращает их в читабельном формате - уникальным набором множеств
-    и количеством вхождений этих множеств в датасет
-
-    :param filenames:
-    массив файлов в которых находятся датасеты
+    Функция построения графика.
 
     :return:
-    Возвращает набор множеств данных в виде массива по файлам
+    0 - если выполнение не было прервано
+    иначе - код ошибки
     """
-    result_list = []
-    result_counts = []
-    data_like_obj = {
-        "value": [],
-        "type": [],
-        "data": []
-    }
-    for file in filenames:
-        for line in open(file, 'r').readlines():
-            tmp_result = set(line.replace('\n', '').split(','))
-            if tmp_result not in result_list:
-                result_list.append(tmp_result)
-                result_counts.append(1)
-            else:
-                result_counts[result_list.index(tmp_result)] += 1
-            data_like_obj["value"].append(tmp_result)
-            data_like_obj["type"].append(file)
-            data_like_obj["data"].append(1)
-    return result_list, result_counts, data_like_obj
-
-
-def main(filenames=None):
-    if filenames is not None:
-        data, values, data_like_frame = get_data(filenames)
-        example = UpSet(from_memberships(data, values), intersection_plot_elements=0, show_counts=True, facecolor='C1')
-        example.plot()
-        plt.show()
-    else:
+    try:
         df = pd.read_excel(FILENAME)
-        # print("dict:", df.__dict__)
-        print('index:', list(df.keys()))
+    except Exception as e:
+        print("""Возникли проблемы при открытии файла датасета.
+Напечатайте details для того чтобы просмотреть подробности.
+Или makedata для того чтобы сгенерировать датасет 
+        """)
+        cmd = input('').lower()
+        if cmd == 'details':
+            print(e)
+        elif cmd == 'makedata':
+            makedata()
+            main()
+        return
+    try:
         df = df.set_index(list(df.keys())[:-1])
-        # eval("df = df.set_index().set_index(df.Pclass == 1, append=True)")
         upset = UpSet(df,
-                      intersection_plot_elements=0)  # disable the default bar chart
+                      intersection_plot_elements=0)
         upset.add_stacked_bars(by="type", colors=cm.Pastel1,
                                title="Count by type", elements=10)
         upset.plot()
         plt.show()
+    except Exception as e:
+        print("Возникли проблемы при построении графика.")
+        print(e)
 
 
-if __name__ == '__main__':
-    # makedata()  # запускать чтобы создать файлы датасетов
-    main()  # запускать чтобы рисовалась картиночка
+if __name__ == '__main__':  # Python entrypoint
+    makedata()
+    main()
