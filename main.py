@@ -141,27 +141,25 @@ def get_data(filenames):
 
 
 def main(filenames=None):
-    data, values, data_like_frame = get_data(filenames)
-    # print(data_like_frame)
-    # data = {'color': ['blue', 'green', 'yellow', 'red', 'white'],
-    #         'object': ['ball', 'pen', 'pencil', 'paper', 'mug'],
-    #         'price': [1.2, 1.0, 0.6, 0.9, 1.7],
-    #         'levels': [1, 2, 3, 4, 5]
-    #         }
-    # data_frame = pd.DataFrame(data, columns=['color', 'object', 'price'], index=['levels'])
-    # print(data_frame)
-    # data_frame = data_frame.set_index(data_frame.type).set_index(data_frame.values)
-    # example = UpSet(data_frame, intersection_plot_elements=0, show_counts=True)
-    example = UpSet(from_memberships(data, values), intersection_plot_elements=0, show_counts=True, facecolor='C1')
-    # print(example.totals)
-    # example.add_stacked_bars(by='type', colors=cm.Pastel1, title="Заказы")
-    example.plot()
-    plt.show()
+    if filenames is not None:
+        data, values, data_like_frame = get_data(filenames)
+        example = UpSet(from_memberships(data, values), intersection_plot_elements=0, show_counts=True, facecolor='C1')
+        example.plot()
+        plt.show()
+    else:
+        df = pd.read_excel(FILENAME)
+        # print("dict:", df.__dict__)
+        print('index:', list(df.keys()))
+        df = df.set_index(list(df.keys())[:-1])
+        # eval("df = df.set_index().set_index(df.Pclass == 1, append=True)")
+        upset = UpSet(df,
+                      intersection_plot_elements=0)  # disable the default bar chart
+        upset.add_stacked_bars(by="type", colors=cm.Pastel1,
+                               title="Count by type", elements=10)
+        upset.plot()
+        plt.show()
 
 
 if __name__ == '__main__':
-    # makedata()
-    main(
-        [
-            name1, name2, name3
-        ])
+    # makedata()  # запускать чтобы создать файлы датасетов
+    main()  # запускать чтобы рисовалась картиночка
